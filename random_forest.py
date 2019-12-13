@@ -1,8 +1,51 @@
 # Random forest algorithm
 from csv import reader
 from random import randrange
+from random import seed
 from math import sqrt
 
+####################################################################################################
+# class WineFileReader():
+#     def __init__(self, filename):
+#         raw_dataset = self.load_csv(filename)
+#         self.dataset = self.get_processed_dataset(raw_dataset)
+#         for row in self.dataset:
+#             class_id = row.pop()
+#
+#
+#     def load_csv(self, filename):
+#         dataset = list()
+#         with open(filename, 'r') as file:
+#             csv_file = reader(file)
+#             for row in csv_file:
+#                 if row:
+#                     dataset.append(row)
+#         return dataset
+#
+#     def get_processed_dataset(self, raw_dataset):
+#         dataset_with_float_values = self.convert_values_to_float(raw_dataset)
+#         dataset = self.convert_class_name_to_int(dataset_with_float_values, len(dataset_with_float_values[0]) - 1)
+#         return dataset
+#
+#     def convert_values_to_float(self, raw_dataset):
+#         row_length = len(raw_dataset[0]) - 1
+#         for row in raw_dataset:
+#             for col in range(0, row_length):
+#                 row[col] = float(row[col].strip())
+#         return raw_dataset
+#
+#     def convert_class_name_to_int(self, dataset, column):
+#         class_values = [row[column] for row in dataset]
+#         unique = set(class_values)
+#         lookup = dict()
+#         for i, value in enumerate(unique):
+#             lookup[value] = i
+#         for row in dataset:
+#             row[column] = lookup[row[column]]
+#         return dataset
+
+
+##################################################################################################
 
 ####################################################################################################
 class SonarFileReader():
@@ -61,16 +104,16 @@ class DecisionTree():
         else:
             print('%s[%s]' % (depth * ' ', node.y))
 
-    def predict(self, row, node=None):
+    def predict(self, predicted_data, node=None):
         node = node or self.root
-        if row[node.split_index] < node.split_value:
+        if predicted_data[node.split_index] < node.split_value:
             if isinstance(node.left_child, DecisionTreeNode):
-                return self.predict(row, node.left_child)
+                return self.predict(predicted_data, node.left_child)
             else:
                 return node.left_child.y
         else:
             if isinstance(node.right_child, DecisionTreeNode):
-                return self.predict(row, node.right_child)
+                return self.predict(predicted_data, node.right_child)
             else:
                 return node.right_child.y
 
@@ -97,13 +140,14 @@ class DecisionTreeNode():
     def init_node(self, dataset, features_count):
         class_values = list(set(row[-1] for row in dataset))
         features = list()
+        range_end = len(dataset[0]) - 1
         while len(features) < features_count:
-            index = randrange(len(dataset[0]) - 1)
-            if index not in features:
-                features.append(index)
+            random_id = randrange(range_end)
+            if random_id not in features:
+                features.append(random_id)
         for index in features:
             for row in dataset:
-                tested_groups = get_test_split(index, row[index], dataset)
+                tested_groups = get_potential_splitted_groups(index, row[index], dataset)
                 gini_index = get_gini_index(tested_groups, class_values)
                 if gini_index < self.split_score:
                     self.split_index = index
@@ -155,7 +199,51 @@ class TerminalTreeNode():
         return most_frequent_class
 
 
-    # Helper methods#################################################################################
+##################################################################################################
+
+
+class RandomForest():
+    def __init__(self, dataset, max_depth, min_size, features_count, trees_count):
+        self.treeList = []
+        self.init_forest(dataset, max_depth, min_size, features_count, trees_count)
+
+    def predict(self, predicted_data):
+        prediction_list = []
+        for tree in self.treeList:
+            prediction_list.append(tree.predict(predicted_data))
+
+        # print(prediction_list)
+        class_list = [p for p in prediction_list]
+
+        counter = 0
+        most_frequent_class = class_list[0]
+
+        for class_id in class_list:
+            curr_frequency = class_list.count(class_id)
+            if (curr_frequency > counter):
+                counter = curr_frequency
+                most_frequent_class = class_id
+
+        return most_frequent_class
+
+    def init_forest(self, dataset, max_depth, min_size, features_count, dataset_subsample_count):
+        subsample_list = self.get_subsample_list(dataset, dataset_subsample_count)
+        for subsample in subsample_list:
+            self.treeList.append(DecisionTree(subsample, max_depth, min_size, features_count))
+
+    def get_subsample_list(self, source_dataset, sample_count):
+        sample_list = []
+        dataset_length = len(source_dataset)
+        for index in range(sample_count):
+            sample = []
+            while len(sample) < dataset_length:
+                random_id = randrange(dataset_length - 1)
+                sample.append(source_dataset[random_id])
+            sample_list.append(sample)
+        return sample_list
+
+# Helper methods#################################################################################
+
 
 # Calculate the Gini index for a split dataset
 def get_gini_index(groups, classes):
@@ -174,7 +262,7 @@ def get_gini_index(groups, classes):
 
 
 # Split a dataset based on an attribute and an attribute value
-def get_test_split(index, value, dataset):
+def get_potential_splitted_groups(index, value, dataset):
     left = list()
     right = list()
     for row in dataset:
@@ -185,17 +273,30 @@ def get_test_split(index, value, dataset):
     return left, right
 
 
-
-
 #######################################################################################################
 sonar_filename = 'data/sonar/sonar.all-data.csv'
+wine_filename = 'data/wine/wine.data.csv'
 max_depth = 10
 min_size = 1
 sample_size = 1.0
-
+# seed(42)
 sonar_file_reader = SonarFileReader(sonar_filename)
+wine_file_reader = WineFileReader(sonar_filename)
 sonar_dataset = sonar_file_reader.dataset
+wine_dataset =wine_file_reader.dataset
 features_count_for_splitting = int(sqrt(len(sonar_dataset[0]) - 1))
+trees_count = 5
 
-tree = DecisionTree(sonar_dataset, max_depth, min_size, features_count_for_splitting)
-tree.print_tree(tree.root)
+
+# calculation accuracy ###############################################################################
+wins = 0
+tries = int(len(sonar_dataset) / 2)
+for i in range(tries):
+    copy_dataset = list(sonar_dataset)
+    predicted_data = copy_dataset.pop(i)
+    rf = RandomForest(copy_dataset, max_depth, min_size, features_count_for_splitting, trees_count)
+    prediction = rf.predict(predicted_data)
+    if prediction == predicted_data[-1]:
+        wins += 1
+
+print(100 * wins/tries)
