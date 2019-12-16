@@ -3,7 +3,6 @@
 from random import randrange
 
 
-
 class DecisionTree():
     def __init__(self, dataset, max_depth, min_size, features_count):
         self.dataset = dataset
@@ -164,6 +163,7 @@ def get_gini_index(groups, classes):  # N time, C space
         gini_index += (1.0 - proportion_sum) * (size / total_samples)
     return gini_index
 
+
 def get_potential_splitted_groups(index, value, dataset):  # N time, N*M space
     left = []
     right = []
@@ -173,6 +173,3 @@ def get_potential_splitted_groups(index, value, dataset):  # N time, N*M space
         else:
             right.append(row)
     return left, right
-
-
-
