@@ -1,15 +1,55 @@
 # Random forest algorithm
-
+import math
 from random import randrange
 
 
+class CustomRandomForestClassifier():
+    def __init__(self, dataset, max_depth, min_size, features_count, trees_count, criterion='gini'):
+        self.treeList = []
+        self.init_forest(dataset, max_depth, min_size, features_count, trees_count, criterion)
+
+    def predict(self, predicted_data):
+        prediction_list = []
+        for tree in self.treeList:
+            prediction_list.append(tree.predict(predicted_data))
+
+        counter = 0
+        most_frequent_class = prediction_list[0]
+
+        for class_id in prediction_list:
+            curr_frequency = prediction_list.count(class_id)
+            if (curr_frequency > counter):
+                counter = curr_frequency
+                most_frequent_class = class_id
+
+        return most_frequent_class
+
+    def init_forest(self, dataset, max_depth, min_size, features_count, dataset_sample_count, criterion):
+        sample_list = self.get_sample_list(dataset, dataset_sample_count)
+        for sample in sample_list:
+            self.treeList.append(DecisionTree(sample, max_depth, min_size, features_count, criterion))
+
+    def get_sample_list(self, source_dataset, sample_count):
+        sample_list = []
+        dataset_length = len(source_dataset)
+        for index in range(sample_count):
+            sample = []
+            while len(sample) < dataset_length:
+                random_id = randrange(dataset_length - 1)
+                sample.append(source_dataset[random_id])
+            sample_list.append(sample)
+        return sample_list
+
+
+##################################################################################################
+
 class DecisionTree():
-    def __init__(self, dataset, max_depth, min_size, features_count):
+    def __init__(self, dataset, max_depth, min_size, features_count, criterion):
         self.dataset = dataset
         self.max_depth = max_depth
         self.min_size = min_size
         self.features_count = features_count
-        self.root = DecisionTreeNode(dataset, features_count, max_depth, min_size, 0)
+        self.root = DecisionTreeNode(dataset, features_count, max_depth, min_size, 0, criterion)
 
     def predict(self, predicted_data, node=None):
         node = node or self.root
@@ -28,7 +68,7 @@ class DecisionTree():
 #################################################################################################
 
 class DecisionTreeNode():
-    def __init__(self, dataset, features_count, max_depth, min_size, current_depth):
+    def __init__(self, dataset, features_count, max_depth, min_size, current_depth, criterion):
         self.left_child = None
         self.right_child = None
         self.splitted_groups = None
@@ -40,6 +80,7 @@ class DecisionTreeNode():
         self.current_depth = current_depth
         self.max_depth = max_depth
         self.min_size = min_size
+        self.criterion = criterion
 
         self.init_node(self.dataset, self.features_count)
         self.create_child_nodes()
@@ -55,11 +96,15 @@ class DecisionTreeNode():
         for index in features:
             for row in dataset:
                 tested_groups = get_potential_splitted_groups(index, row[index], dataset)  # N time, N*M space
-                gini_index = get_gini_index(tested_groups, class_values)  # N time, C space
-                if gini_index < self.split_score:
+                if self.criterion == 'gini':
+                    split_index = get_gini_index(tested_groups, class_values)  # N time, C space
+                else:
+                    split_index = get_shannon_entropy(tested_groups, class_values)
+
+                if split_index < self.split_score:
                     self.split_index = index
                     self.split_value = row[index]
-                    self.split_score = gini_index
+                    self.split_score = split_index
                     self.splitted_groups = tested_groups
 
     def create_child_nodes(self):
@@ -76,13 +121,13 @@ class DecisionTreeNode():
             self.left_child = TerminalTreeNode(left)
         else:
             self.left_child = DecisionTreeNode(
-                left, self.features_count, self.max_depth, self.min_size, self.current_depth + 1
+                left, self.features_count, self.max_depth, self.min_size, self.current_depth + 1, self.criterion
             )
         if len(right) <= self.min_size:
             self.right_child = TerminalTreeNode(right)
         else:
             self.right_child = DecisionTreeNode(
-                right, self.features_count, self.max_depth, self.min_size, self.current_depth + 1
+                right, self.features_count, self.max_depth, self.min_size, self.current_depth + 1, self.criterion
             )
 
 
@@ -106,47 +151,6 @@ class TerminalTreeNode():
         return most_frequent_class
 
 
-##################################################################################################
-
-
-class CustomRandomForestClassifier():
-    def __init__(self, dataset, max_depth, min_size, features_count, trees_count):
-        self.treeList = []
-        self.init_forest(dataset, max_depth, min_size, features_count, trees_count)
-
-    def predict(self, predicted_data):
-        prediction_list = []
-        for tree in self.treeList:
-            prediction_list.append(tree.predict(predicted_data))
-
-        counter = 0
-        most_frequent_class = prediction_list[0]
-
-        for class_id in prediction_list:
-            curr_frequency = prediction_list.count(class_id)
-            if (curr_frequency > counter):
-                counter = curr_frequency
-                most_frequent_class = class_id
-
-        return most_frequent_class
-
-    def init_forest(self, dataset, max_depth, min_size, features_count, dataset_sample_count):
-        sample_list = self.get_sample_list(dataset, dataset_sample_count)
-        for sample in sample_list:
-            self.treeList.append(DecisionTree(sample, max_depth, min_size, features_count))
-
-    def get_sample_list(self, source_dataset, sample_count):
-        sample_list = []
-        dataset_length = len(source_dataset)
-        for index in range(sample_count):
-            sample = []
-            while len(sample) < dataset_length:
-                random_id = randrange(dataset_length - 1)
-                sample.append(source_dataset[random_id])
-            sample_list.append(sample)
-        return sample_list
-
-
 # Helper methods#################################################################################
 
 def get_gini_index(groups, classes):  # N time, C space
@@ -162,6 +166,22 @@ def get_gini_index(groups, classes):  # N time, C space
             proportion_sum += proportion * proportion
         gini_index += (1.0 - proportion_sum) * (size / total_samples)
     return gini_index
+
+
+def get_shannon_entropy(groups, classes):
+    total_samples = float(sum([len(group) for group in groups]))
+    entropy = 0.0
+    for group in groups:
+        size = float(len(group))
+        if size == 0:
+            continue
+        entropy_sum = 0.0
+        for class_val in classes:
+            proportion = [row[-1] for row in group].count(class_val) / size
+            if not proportion == 0:
+                entropy_sum += -proportion * math.log(proportion, 2)
+                entropy += entropy_sum * (size / total_samples)
+    return entropy
 
 
 def get_potential_splitted_groups(index, value, dataset):  # N time, N*M space

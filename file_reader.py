@@ -9,11 +9,10 @@ class WineFileReader():
 
     def get_processed_dataset(self, raw_dataset):
         dataset = convert_values_to_float(raw_dataset)
-        # dataset = convert_class_name_to_int(dataset_with_float_values, len(dataset_with_float_values[0]) - 1)
         return dataset
 
 
-####################################################################################################
+##################################################################################################
 class SonarFileReader():
     def __init__(self, filename):
         raw_dataset = load_csv(filename)

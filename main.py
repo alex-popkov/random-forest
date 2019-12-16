@@ -1,3 +1,4 @@
+import math
 from random import seed
 from math import sqrt
 from random import randrange
@@ -11,11 +12,11 @@ seed(42)
 
 
 ###############################################################################################################
-def test_custom(dataset, test_dataset, max_depth, min_size, features_count_for_splitting, trees_count):
+def test_custom(dataset, test_dataset, max_depth, min_size, features_count_for_splitting, trees_count, criterion='gini'):
     wins = 0
     train_start = time.time()
     rfc = random_forest.CustomRandomForestClassifier(dataset, max_depth, min_size, features_count_for_splitting,
-                                                     trees_count)
+                                                     trees_count, criterion)
 
     train_end = time.time()
     for sample in test_dataset:
@@ -28,14 +29,14 @@ def test_custom(dataset, test_dataset, max_depth, min_size, features_count_for_s
 
 
 ###############################################################################################################
-def test_sk(dataset, test_dataset, max_depth, min_size, features_count_for_splitting, trees_count):
+def test_sk(dataset, test_dataset, max_depth, min_size, features_count_for_splitting, trees_count, criterion='gini'):
     wins = 0
 
     sk_dataset = [row[0: -1] for row in dataset]
     sk_classes = [row[-1] for row in dataset]
 
     rfc = RandomForestClassifier(n_estimators=trees_count, max_depth=max_depth,
-                                 max_features=features_count_for_splitting)
+                                 max_features=features_count_for_splitting, criterion=criterion)
     train_start = time.time()
 
     rfc.fit(sk_dataset, sk_classes)
@@ -64,7 +65,7 @@ def get_train_and_test_datasets(dataset):
 
 
 ###############################################################################################################
-def test_sk_vs_custom(dataset, max_depth, min_size, trees_count):
+def test_sk_vs_custom(dataset, max_depth, min_size, trees_count, criterion):
     count = 1
     float_count = float(count)
 
@@ -81,10 +82,12 @@ def test_sk_vs_custom(dataset, max_depth, min_size, trees_count):
         custom_accuracy, custom_train_time, custom_predict_time = test_custom(train_sonar_dataset, test_sonar_dataset,
                                                                               max_depth, min_size,
                                                                               int(sqrt(len(sonar_dataset[0]) - 1)),
-                                                                              trees_count)
+                                                                              trees_count,
+                                                                              criterion)
         sk_accuracy, sk_train_time, sk_predict_time = test_sk(train_sonar_dataset, test_sonar_dataset, max_depth,
                                                               min_size, int(sqrt(len(sonar_dataset[0]) - 1)),
-                                                              trees_count)
+                                                              trees_count,
+                                                              criterion)
         average_custom_accuracy += custom_accuracy
         average_custom_train_time += custom_train_time
         average_custom_predict_time += custom_predict_time
@@ -134,19 +137,8 @@ def test_time_complexity(dataset, max_depth, min_size, trees_count, multi_n_inde
 
     if multi_n_index > 1:
         for _ in range(multi_n_index - 1):
-            train_multi_dataset += copy_train_dataset
-            test_multi_dataset += copy_test_dataset
-
-    print(multi_n_index, multi_p_index)
-    print(len(train_multi_dataset), len(test_multi_dataset))
-    print(len(train_dataset), len(test_dataset), len(test_dataset[0]))
-
-    print(train_multi_dataset)
-    print(test_multi_dataset)
-    print(max_depth,
-          min_size,
-          int(sqrt(len(train_multi_dataset[0]) - 1)),
-          trees_count)
+            train_multi_dataset += train_multi_dataset
+            test_multi_dataset += test_multi_dataset
 
     multi_acc, multi_train_time, multi_predict_time = test_custom(
         train_multi_dataset,
@@ -166,8 +158,8 @@ def test_time_complexity(dataset, max_depth, min_size, trees_count, multi_n_inde
         trees_count
     )
 
-    print('Multi N index:', multi_n_index, ', multi p index: ', multi_p_index, ', deceleration index:',
-          multi_train_time / train_time)
+    print('Multi N index:', multi_n_index, ', multi p index: ', multi_p_index, ', deceleration index: train:',
+          multi_train_time / train_time,  ', predict:', multi_predict_time / predict_time)
 
 
 ###############################################################################################################
@@ -181,5 +173,8 @@ sonar_dataset = sonar_file_reader.dataset
 wine_dataset = wine_file_reader.dataset
 trees_count = 50
 
-# test_sk_vs_custom(sonar_dataset, max_depth, min_size, trees_count)
-test_time_complexity(sonar_dataset, max_depth, min_size, trees_count, 3, 3)
+test_sk_vs_custom(sonar_dataset, max_depth, min_size, trees_count, 'entropy')
+test_sk_vs_custom(wine_dataset, max_depth, min_size, trees_count, 'entropy')
+# test_time_complexity(sonar_dataset, max_depth, min_size, trees_count, 3, 1)
+# test_time_complexity(sonar_dataset, max_depth, min_size, trees_count, 3, 3)
+# test_time_complexity(sonar_dataset, max_depth, min_size, trees_count, 1, 3)
