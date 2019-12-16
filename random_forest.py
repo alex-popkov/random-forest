@@ -12,15 +12,6 @@ class DecisionTree():
         self.features_count = features_count
         self.root = DecisionTreeNode(dataset, features_count, max_depth, min_size, 0)
 
-    # Print a decision tree
-    def print_tree(self, node, depth=0):
-        if isinstance(node, DecisionTreeNode):
-            print('%s[X%d < %.3f]' % (depth * ' ', (node.split_index + 1), node.split_value))
-            self.print_tree(node.left_child, depth + 1)
-            self.print_tree(node.right_child, depth + 1)
-        else:
-            print('%s[%s]' % (depth * ' ', node.y))
-
     def predict(self, predicted_data, node=None):
         node = node or self.root
         if predicted_data[node.split_index] < node.split_value:
@@ -129,14 +120,11 @@ class CustomRandomForestClassifier():
         for tree in self.treeList:
             prediction_list.append(tree.predict(predicted_data))
 
-        # print(prediction_list)
-        class_list = [p for p in prediction_list]
-
         counter = 0
-        most_frequent_class = class_list[0]
+        most_frequent_class = prediction_list[0]
 
-        for class_id in class_list:
-            curr_frequency = class_list.count(class_id)
+        for class_id in prediction_list:
+            curr_frequency = prediction_list.count(class_id)
             if (curr_frequency > counter):
                 counter = curr_frequency
                 most_frequent_class = class_id
