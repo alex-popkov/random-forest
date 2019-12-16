@@ -214,7 +214,6 @@ class RandomForest():
 
         # print(prediction_list)
         class_list = [p for p in prediction_list]
-
         counter = 0
         most_frequent_class = class_list[0]
 
@@ -241,6 +240,17 @@ class RandomForest():
                 sample.append(source_dataset[random_id])
             sample_list.append(sample)
         return sample_list
+
+        # dataset_split = list()
+        # dataset_copy = list(source_dataset)
+        # fold_size = int(len(source_dataset) / sample_count)
+        # for i in range(sample_count):
+        #     fold = list()
+        #     while len(fold) < fold_size:
+        #         index = randrange(len(dataset_copy))
+        #         fold.append(dataset_copy.pop(index))
+        #     dataset_split.append(fold)
+        # return dataset_split
 
 # Helper methods#################################################################################
 
@@ -281,12 +291,11 @@ min_size = 1
 sample_size = 1.0
 # seed(42)
 sonar_file_reader = SonarFileReader(sonar_filename)
-wine_file_reader = WineFileReader(sonar_filename)
+# wine_file_reader = WineFileReader(sonar_filename)
 sonar_dataset = sonar_file_reader.dataset
-wine_dataset =wine_file_reader.dataset
+# wine_dataset =wine_file_reader.dataset
 features_count_for_splitting = int(sqrt(len(sonar_dataset[0]) - 1))
 trees_count = 5
-
 
 # calculation accuracy ###############################################################################
 wins = 0
