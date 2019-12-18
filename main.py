@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 import random_forest
 import file_reader
+import demo
 
 seed(42)
 
@@ -20,13 +21,16 @@ def test_custom(dataset, test_dataset, max_depth, min_size, features_count_for_s
                                                      trees_count, criterion)
 
     train_end = time.time()
+    samples = []
     for sample in test_dataset:
-        prediction = rfc.predict(sample[0: -1])
-        if prediction == sample[-1]:
+        samples.append([sample[0: -1], sample[-1]])
+    predict_start = time.time()
+    for sample in samples:
+        prediction = rfc.predict(sample[0])
+        if prediction == sample[1]:
             wins += 1
-
     predict_end = time.time()
-    return int(100 * wins / len(test_dataset)), train_end - train_start, predict_end - train_end
+    return int(100 * wins / len(test_dataset)), train_end - train_start, int(1000000*(predict_end - predict_start)/len(samples))
 
 
 ###############################################################################################################
@@ -43,13 +47,17 @@ def test_sk(dataset, test_dataset, max_depth, min_size, features_count_for_split
     rfc.fit(sk_dataset, sk_classes)
     train_end = time.time()
 
+    samples = []
     for sample in test_dataset:
-        k_prediction = rfc.predict([sample[0: -1]])
-        if k_prediction == sample[-1]:
+        samples.append([sample[0: -1], sample[-1]])
+    predict_start = time.time()
+    for sample in samples:
+        prediction = rfc.predict(sample[0])
+        if prediction == sample[1]:
             wins += 1
     predict_end = time.time()
 
-    return int(100 * wins / len(test_dataset)), train_end - train_start, predict_end - train_end
+    return int(100 * wins / len(test_dataset)), train_end - train_start, int((predict_end - predict_start)/len(samples))
 
 
 ###############################################################################################################
@@ -138,14 +146,11 @@ def test_time_complexity(dataset, max_depth, min_size, trees_count, multi_n_inde
 
     copy_train_multi_dataset = list(train_multi_dataset)
     copy_test_multi_dataset = list(test_multi_dataset)
+
     if multi_n_index > 1:
         for _ in range(multi_n_index - 1):
             train_multi_dataset += copy_train_multi_dataset
             test_multi_dataset += copy_test_multi_dataset
-
-    print(multi_n_index, multi_p_index)
-    print(len(train_dataset), len(test_dataset), len(train_dataset[0]), len(test_dataset[0]))
-    print(len(train_multi_dataset), len(test_multi_dataset), len(train_multi_dataset[0]), len(test_multi_dataset[0]))
 
     multi_acc, multi_train_time, multi_predict_time = test_custom(
         train_multi_dataset,
@@ -170,6 +175,7 @@ def test_time_complexity(dataset, max_depth, min_size, trees_count, multi_n_inde
 
 
 ###############################################################################################################
+
 sonar_filename = 'data/sonar/sonar.all-data.csv'
 wine_filename = 'data/wine/wine.data.csv'
 max_depth = 10
@@ -197,6 +203,7 @@ trees_count = 50
 # test_time_complexity(sonar_dataset, max_depth, min_size, trees_count, 3, 3)
 # test_time_complexity(sonar_dataset, max_depth, min_size, trees_count, 1, 3)
 
+
 # test_time_complexity(x3_sonar_dataset, max_depth, min_size, trees_count, 3, 1)
 # test_time_complexity(x3_sonar_dataset, max_depth, min_size, trees_count, 3, 3)
 # test_time_complexity(x3_sonar_dataset, max_depth, min_size, trees_count, 1, 3)
@@ -205,3 +212,7 @@ trees_count = 50
 # test_time_complexity(wine_dataset, max_depth, min_size, trees_count, 3, 1)
 # test_time_complexity(wine_dataset, max_depth, min_size, trees_count, 3, 3)
 # test_time_complexity(wine_dataset, max_depth, min_size, trees_count, 1, 3)
+
+demo.demo()
+
+
